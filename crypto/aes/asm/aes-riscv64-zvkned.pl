@@ -69,7 +69,7 @@ sub aes_128_load_key {
     my $KEYP = shift;
 
     my $code=<<___;
-    @{[vsetivli "zero", 4, "e32", "m1", "ta", "ma"]}
+    @{[vsetivli "zero", 4, "e32", "mf2", "ta", "ma"]}
     @{[vle32_v $V1, $KEYP]}
     addi $KEYP, $KEYP, 16
     @{[vle32_v $V2, $KEYP]}
@@ -101,7 +101,7 @@ sub aes_192_load_key {
     my $KEYP = shift;
 
     my $code=<<___;
-    @{[vsetivli "zero", 4, "e32", "m1", "ta", "ma"]}
+    @{[vsetivli "zero", 4, "e32", "mf2", "ta", "ma"]}
     @{[vle32_v $V1, $KEYP]}
     addi $KEYP, $KEYP, 16
     @{[vle32_v $V2, $KEYP]}
@@ -137,7 +137,7 @@ sub aes_256_load_key {
     my $KEYP = shift;
 
     my $code=<<___;
-    @{[vsetivli "zero", 4, "e32", "m1", "ta", "ma"]}
+    @{[vsetivli "zero", 4, "e32", "mf2", "ta", "ma"]}
     @{[vle32_v $V1, $KEYP]}
     addi $KEYP, $KEYP, 16
     @{[vle32_v $V2, $KEYP]}
@@ -345,25 +345,45 @@ L_cbc_enc_128:
 
     @{[vle32_v $V24, $INP]}
     @{[vxor_vv $V24, $V24, $V16]}
+    @{[vxor_vv $V18, $V11, $V1]}    #v13 = w[40,43] XOR w[ 0, 3]
+
+
+    # AES body aes_128_encrypt
+    @{[vaesz_vs $V24, $V1]}     # with round key w[ 0, 3]
+    addi $INP, $INP, 16
+    @{[vaesem_vs $V24, $V2]}    # with round key w[ 4, 7]
+    @{[vaesem_vs $V24, $V3]}    # with round key w[ 8,11]
     j 2f
 
 1:
-    @{[vle32_v $V17, $INP]}
-    @{[vxor_vv $V24, $V24, $V17]}
-
-2:
-    # AES body
-    @{[aes_128_encrypt]}
-
-    @{[vse32_v $V24, $OUTP]}
-
-    addi $INP, $INP, 16
+    @{[vaesem_vs $V24, $V2]}    # with round key w[ 4, 7]
+    @{[vse32_v $V25, $OUTP]}
+    @{[vaesem_vs $V24, $V3]}    # with round key w[ 8,11]
     addi $OUTP, $OUTP, 16
+2:
+    # AES body # aes_128_encrypt
+    @{[vaesem_vs $V24, $V4]}    # with round key w[12,15]
     addi $LEN, $LEN, -16
+
+    @{[vaesem_vs $V24, $V5]}    # with round key w[16,19]
+    @{[vaesem_vs $V24, $V6]}    # with round key w[20,23]
+    @{[vle32_v $V17, $INP]}
+    @{[vaesem_vs $V24, $V7]}    # with round key w[24,27]
+    addi $INP, $INP, 16
+    @{[vaesem_vs $V24, $V8]}    # with round key w[28,31]
+    @{[vxor_vv $V17, $V17, $V18]}
+    @{[vaesem_vs $V24, $V9]}    # with round key w[32,35]
+    @{[vaesem_vs $V24, $V10]}   # with round key w[36,39]
+    @{[vmv_v_v $V25, $V24]}
+    @{[vaesef_vs $V24, $V17]}   # with round key w[40,43] XOR w[ 0, 3]
+    @{[vaesef_vs $V25, $V11]}   # with round key w[40,43]
 
     bnez $LEN, 1b
 
-    @{[vse32_v $V24, $IVP]}
+    @{[vse32_v $V25, $OUTP]}
+    addi $OUTP, $OUTP, 16
+    @{[vse32_v $V25, $IVP]}
+
 
     ret
 .size L_cbc_enc_128,.-L_cbc_enc_128
@@ -380,25 +400,45 @@ L_cbc_enc_192:
 
     @{[vle32_v $V24, $INP]}
     @{[vxor_vv $V24, $V24, $V16]}
+    @{[vxor_vv $V18, $V13, $V1]}    #v13 = w[48,51] XOR w[ 0, 3]
+
+    # AES body aes_128_encrypt
+    @{[vaesz_vs $V24, $V1]}     # with round key w[ 0, 3]
+    addi $INP, $INP, 16
+    @{[vaesem_vs $V24, $V2]}    # with round key w[ 4, 7]
+    @{[vaesem_vs $V24, $V3]}    # with round key w[ 8,11]
     j 2f
 
 1:
-    @{[vle32_v $V17, $INP]}
-    @{[vxor_vv $V24, $V24, $V17]}
+    @{[vaesem_vs $V24, $V2]}    # with round key w[ 4, 7]
+    @{[vse32_v $V25, $OUTP]}
+    @{[vaesem_vs $V24, $V3]}    # with round key w[ 8,11]
+    addi $OUTP, $OUTP, 16
 
 2:
-    # AES body
-    @{[aes_192_encrypt]}
-
-    @{[vse32_v $V24, $OUTP]}
-
-    addi $INP, $INP, 16
-    addi $OUTP, $OUTP, 16
+    # AES body # aes_192_encrypt
+    @{[vaesem_vs $V24, $V4]}    # with round key w[12,15]
     addi $LEN, $LEN, -16
+    @{[vaesem_vs $V24, $V5]}    # with round key w[16,19]
+    @{[vaesem_vs $V24, $V6]}    # with round key w[20,23]
+    @{[vle32_v $V17, $INP]}
+    @{[vaesem_vs $V24, $V7]}    # with round key w[24,27]
+    addi $INP, $INP, 16
+    @{[vaesem_vs $V24, $V8]}    # with round key w[28,31]
+    @{[vxor_vv $V17, $V17, $V18]}
+    @{[vaesem_vs $V24, $V9]}    # with round key w[32,35]
+    @{[vaesem_vs $V24, $V10]}   # with round key w[36,39]
+    @{[vaesem_vs $V24, $V11]}   # with round key w[40,43]
+    @{[vaesem_vs $V24, $V12]}   # with round key w[44,47]
+    @{[vmv_v_v $V25, $V24]}
+    @{[vaesef_vs $V24, $V17]}   # with round key w[48,51] XOR w[ 0, 3]
+    @{[vaesef_vs $V25, $V13]}   # with round key w[48,51]
 
     bnez $LEN, 1b
 
-    @{[vse32_v $V24, $IVP]}
+    @{[vse32_v $V25, $OUTP]}
+    addi $OUTP, $OUTP, 16
+    @{[vse32_v $V25, $IVP]}
 
     ret
 .size L_cbc_enc_192,.-L_cbc_enc_192
@@ -415,25 +455,47 @@ L_cbc_enc_256:
 
     @{[vle32_v $V24, $INP]}
     @{[vxor_vv $V24, $V24, $V16]}
+    @{[vxor_vv $V18, $V15, $V1]}    #v13 = w[56,59] XOR w[ 0, 3]
+
+    # AES body aes_128_encrypt
+    @{[vaesz_vs $V24, $V1]}     # with round key w[ 0, 3]
+    addi $INP, $INP, 16
+    @{[vaesem_vs $V24, $V2]}    # with round key w[ 4, 7]
+    @{[vaesem_vs $V24, $V3]}    # with round key w[ 8,11]
     j 2f
 
 1:
-    @{[vle32_v $V17, $INP]}
-    @{[vxor_vv $V24, $V24, $V17]}
+    @{[vaesem_vs $V24, $V2]}    # with round key w[ 4, 7]
+    @{[vse32_v $V25, $OUTP]}
+    @{[vaesem_vs $V24, $V3]}    # with round key w[ 8,11]
+    addi $OUTP, $OUTP, 16
 
 2:
-    # AES body
-    @{[aes_256_encrypt]}
-
-    @{[vse32_v $V24, $OUTP]}
-
-    addi $INP, $INP, 16
-    addi $OUTP, $OUTP, 16
+    # AES body # aes_256_encrypt
+    @{[vaesem_vs $V24, $V4]}    # with round key w[12,15]
     addi $LEN, $LEN, -16
+    @{[vaesem_vs $V24, $V5]}    # with round key w[16,19]
+    @{[vaesem_vs $V24, $V6]}    # with round key w[20,23]
+    @{[vle32_v $V17, $INP]}
+    @{[vaesem_vs $V24, $V7]}    # with round key w[24,27]
+    addi $INP, $INP, 16
+    @{[vaesem_vs $V24, $V8]}    # with round key w[28,31]
+    @{[vxor_vv $V17, $V17, $V18]}
+    @{[vaesem_vs $V24, $V9]}    # with round key w[32,35]
+    @{[vaesem_vs $V24, $V10]}   # with round key w[36,39]
+    @{[vaesem_vs $V24, $V11]}   # with round key w[40,43]
+    @{[vaesem_vs $V24, $V12]}   # with round key w[44,47]
+    @{[vaesem_vs $V24, $V13]}   # with round key w[48,51]
+    @{[vaesem_vs $V24, $V14]}   # with round key w[52,55]
+    @{[vmv_v_v $V25, $V24]}
+    @{[vaesef_vs $V24, $V17]}   # with round key w[56,59] XOR w[ 0, 3]
+    @{[vaesef_vs $V25, $V15]}   # with round key w[56,59]
 
     bnez $LEN, 1b
 
-    @{[vse32_v $V24, $IVP]}
+    @{[vse32_v $V25, $OUTP]}
+    addi $OUTP, $OUTP, 16
+    @{[vse32_v $V25, $IVP]}
 
     ret
 .size L_cbc_enc_256,.-L_cbc_enc_256
@@ -862,7 +924,7 @@ L_set_key_128:
     li $T1, 10
     sw $T1, 240($KEYP)
 
-    @{[vsetivli__x0_4_e32_m1_tu_mu]}
+    @{[vsetivli__x0_4_e32_mf2_tu_mu]}
 
     # Load the key
     @{[vle32_v $V10, ($UKEY)]}
@@ -914,7 +976,7 @@ L_set_key_256:
     li $T1, 14
     sw $T1, 240($KEYP)
 
-    @{[vsetivli__x0_4_e32_m1_tu_mu]}
+    @{[vsetivli__x0_4_e32_mf2_tu_mu]}
 
     # Load the key
     @{[vle32_v $V10, ($UKEY)]}
@@ -1014,7 +1076,7 @@ ___
 $code .= <<___;
 .p2align 3
 L_enc_128:
-    @{[vsetivli "zero", 4, "e32", "m1", "ta", "ma"]}
+    @{[vsetivli "zero", 4, "e32", "mf2", "ta", "ma"]}
 
     @{[vle32_v $V1, $INP]}
 
@@ -1060,7 +1122,7 @@ ___
 $code .= <<___;
 .p2align 3
 L_enc_192:
-    @{[vsetivli "zero", 4, "e32", "m1", "ta", "ma"]}
+    @{[vsetivli "zero", 4, "e32", "mf2", "ta", "ma"]}
 
     @{[vle32_v $V1, $INP]}
 
@@ -1111,7 +1173,7 @@ ___
 $code .= <<___;
 .p2align 3
 L_enc_256:
-    @{[vsetivli "zero", 4, "e32", "m1", "ta", "ma"]}
+    @{[vsetivli "zero", 4, "e32", "mf2", "ta", "ma"]}
 
     @{[vle32_v $V1, $INP]}
 
@@ -1192,7 +1254,7 @@ ___
 $code .= <<___;
 .p2align 3
 L_dec_128:
-    @{[vsetivli "zero", 4, "e32", "m1", "ta", "ma"]}
+    @{[vsetivli "zero", 4, "e32", "mf2", "ta", "ma"]}
 
     @{[vle32_v $V1, $INP]}
 
@@ -1239,7 +1301,7 @@ ___
 $code .= <<___;
 .p2align 3
 L_dec_192:
-    @{[vsetivli "zero", 4, "e32", "m1", "ta", "ma"]}
+    @{[vsetivli "zero", 4, "e32", "mf2", "ta", "ma"]}
 
     @{[vle32_v $V1, $INP]}
 
@@ -1292,7 +1354,7 @@ ___
 $code .= <<___;
 .p2align 3
 L_dec_256:
-    @{[vsetivli "zero", 4, "e32", "m1", "ta", "ma"]}
+    @{[vsetivli "zero", 4, "e32", "mf2", "ta", "ma"]}
 
     @{[vle32_v $V1, $INP]}
 
